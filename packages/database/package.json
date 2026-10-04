@@ -1,0 +1,38 @@
+{
+  "name": "@freshman-plus/database",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prisma schema (single source of truth) + client singleton",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.1.0",
+    "tsx": "^4.19.2",
+    "bcryptjs": "^2.4.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@freshman-plus/constants": "workspace:*"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx src/seed.ts"
+  }
+}
