@@ -1,0 +1,23 @@
+{
+  "name": "@freshman-plus/validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared Zod schemas (mobile forms, admin forms, API pipes)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@freshman-plus/constants": "workspace:*",
+    "zod": "^3.24.1"
+  }
+}
