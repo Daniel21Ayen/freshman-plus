@@ -1,0 +1,521 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Language {
+  en
+  am
+}
+
+enum Semester {
+  FIRST
+  SECOND
+  SUMMER
+}
+
+enum ContentType {
+  NOTE
+  AMHARIC_NOTE
+  MATERIAL
+  QUIZ
+  TEST
+  PAST_EXAM
+}
+
+enum ExamType {
+  MIDTERM
+  FINAL
+  MOCK
+  COC
+}
+
+enum QuizKind {
+  QUIZ
+  TEST
+}
+
+enum PurchaseItemType {
+  CONTENT
+  EXAM
+  QUIZ
+}
+
+enum PaymentProvider {
+  TELEBIRR
+  CBE_BIRR
+  MPESA
+  KACHA
+  YAYA
+  CHAPA
+}
+
+enum PaymentStatus {
+  AWAITING_SCREENSHOT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum PaymentEventType {
+  CREATED
+  SCREENSHOT_UPLOADED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum EntitlementStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum NotificationKind {
+  ANNOUNCEMENT
+  PAYMENT
+  CONTENT
+  SYSTEM
+  EXAM
+}
+
+enum AnnouncementAudience {
+  ALL
+  UNIVERSITY
+  COURSE
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum OtpPurpose {
+  REGISTER
+  RESET_PASSWORD
+  LOGIN
+}
+
+// ───────────────────────────── Identity ─────────────────────────────
+model User {
+  id                String     @id @default(uuid())
+  fullName          String
+  email             String?    @unique
+  phone             String?    @unique
+  passwordHash      String
+  role              Role       @default(STUDENT)
+  status            UserStatus @default(ACTIVE)
+  universityId      String?
+  department        String?
+  semester          Semester?
+  avatarUrl         String?
+  language          Language   @default(en)
+  emailVerifiedAt   DateTime?
+  phoneVerifiedAt   DateTime?
+  lastActiveAt      DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  university        University?      @relation(fields: [universityId], references: [id])
+  devices           Device[]
+  enrollments       Enrollment[]
+  progress          ProgressRecord[]
+  attempts          Attempt[]
+  payments          Payment[]        @relation("PaymentStudent")
+  reviewedPayments  Payment[]        @relation("PaymentReviewer")
+  entitlements      Entitlement[]
+  notifications     Notification[]
+  announcements     Announcement[]
+  tickets           SupportTicket[]
+  auditLogs         AuditLog[]
+
+  @@index([role, status])
+  @@index([universityId])
+}
+
+model Device {
+  id         String    @id @default(uuid())
+  userId     String
+  deviceId   String
+  name       String?
+  platform   String
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+}
+
+model OtpCode {
+  id         String     @id @default(uuid())
+  target     String
+  purpose    OtpPurpose
+  codeHash   String
+  attempts   Int        @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([target, purpose])
+}
+
+// ───────────────────────────── Catalog ─────────────────────────────
+model University {
+  id           String       @id @default(uuid())
+  name         String
+  abbreviation String       @unique
+  logoUrl      String?
+  status       EntityStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  courses       Course[]
+  users         User[]
+  announcements Announcement[]
+}
+
+model Course {
+  id           String       @id @default(uuid())
+  universityId String
+  name         String
+  code         String
+  semester     Semester     @default(FIRST)
+  status       EntityStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  university    University       @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  chapters      Chapter[]
+  contents      Content[]
+  exams         Exam[]
+  quizzes       Quiz[]
+  enrollments   Enrollment[]
+  progress      ProgressRecord[]
+  announcements Announcement[]
+
+  @@unique([universityId, code])
+}
+
+model Chapter {
+  id        String   @id @default(uuid())
+  courseId  String
+  title     String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  contents Content[]
+
+  @@index([courseId, order])
+}
+
+model Content {
+  id            String        @id @default(uuid())
+  courseId      String
+  chapterId     String?
+  type          ContentType
+  language      Language      @default(en)
+  title         String
+  fileUrl       String?
+  fileSizeBytes Int?
+  version       Int           @default(1)
+  priceEtb      Decimal       @default(0) @db.Decimal(10, 2)
+  isFree        Boolean       @default(false)
+  status        PublishStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  @@index([courseId, type, status])
+}
+
+model Exam {
+  id              String        @id @default(uuid())
+  courseId        String
+  type            ExamType
+  title           String
+  academicYear    String
+  semester        Semester      @default(FIRST)
+  questionCount   Int           @default(0)
+  durationMinutes Int?
+  priceEtb        Decimal       @default(0) @db.Decimal(10, 2)
+  validityDays    Int           @default(7)
+  pdfUrl          String?
+  status          PublishStatus @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  Attempt[]
+
+  @@index([courseId, type, status])
+}
+
+model Quiz {
+  id              String        @id @default(uuid())
+  courseId        String
+  kind            QuizKind      @default(QUIZ)
+  title           String
+  durationMinutes Int           @default(15)
+  priceEtb        Decimal       @default(0) @db.Decimal(10, 2)
+  status          PublishStatus @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  Attempt[]
+
+  @@index([courseId, kind, status])
+}
+
+model Question {
+  id           String   @id @default(uuid())
+  examId       String?
+  quizId       String?
+  text         String
+  textAm       String?
+  options      Json
+  correctIndex Int
+  explanation  String?
+  topic        String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  exam Exam? @relation(fields: [examId], references: [id], onDelete: Cascade)
+  quiz Quiz? @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([examId, order])
+  @@index([quizId, order])
+}
+
+// ───────────────────────────── Learning ─────────────────────────────
+model Enrollment {
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, courseId])
+}
+
+model ProgressRecord {
+  id            String   @id @default(uuid())
+  userId        String
+  courseId      String
+  lastChapterId String?
+  percent       Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+model Attempt {
+  id          String    @id @default(uuid())
+  /// Client-generated so offline submissions can be retried without duplicates.
+  clientId    String    @unique
+  userId      String
+  examId      String?
+  quizId      String?
+  answers     Json
+  score       Int?
+  total       Int?
+  startedAt   DateTime
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam Exam? @relation(fields: [examId], references: [id], onDelete: SetNull)
+  quiz Quiz? @relation(fields: [quizId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+// ───────────────────────────── Payments ─────────────────────────────
+/// Accounts students pay into (Admin → Payment Methods / Admin Account).
+model PaymentMethod {
+  id            String          @id @default(uuid())
+  provider      PaymentProvider @unique
+  displayName   String
+  accountName   String
+  accountNumber String?
+  phoneNumber   String?
+  instructions  Json            @default("[]")
+  status        EntityStatus    @default(ACTIVE)
+  sortOrder     Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  payments Payment[]
+}
+
+model Payment {
+  id              String           @id @default(uuid())
+  userId          String
+  methodId        String
+  itemType        PurchaseItemType
+  itemId          String
+  amountEtb       Decimal          @db.Decimal(10, 2)
+  reference       String?
+  screenshotUrl   String?
+  status          PaymentStatus    @default(AWAITING_SCREENSHOT)
+  rejectionReason String?
+  idempotencyKey  String           @unique
+  submittedAt     DateTime?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user        User           @relation("PaymentStudent", fields: [userId], references: [id])
+  reviewer    User?          @relation("PaymentReviewer", fields: [reviewedById], references: [id])
+  method      PaymentMethod  @relation(fields: [methodId], references: [id])
+  events      PaymentEvent[]
+  entitlement Entitlement?
+
+  @@index([status, submittedAt])
+  @@index([userId, createdAt])
+}
+
+/// Append-only ledger. Never UPDATE or DELETE rows.
+model PaymentEvent {
+  id        String           @id @default(uuid())
+  paymentId String
+  type      PaymentEventType
+  actorId   String?
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId, createdAt])
+}
+
+/// Access is separate from payment. One entitlement per payment => retries cannot double-grant.
+model Entitlement {
+  id        String            @id @default(uuid())
+  userId    String
+  itemType  PurchaseItemType
+  itemId    String
+  paymentId String            @unique
+  status    EntitlementStatus @default(ACTIVE)
+  grantedAt DateTime          @default(now())
+  expiresAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([userId, itemType, itemId, status])
+}
+
+// ───────────────────────────── Comms & Ops ─────────────────────────────
+model Announcement {
+  id           String               @id @default(uuid())
+  title        String
+  message      String
+  audience     AnnouncementAudience @default(ALL)
+  universityId String?
+  courseId     String?
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  createdById  String
+  createdAt    DateTime             @default(now())
+
+  createdBy  User        @relation(fields: [createdById], references: [id])
+  university University? @relation(fields: [universityId], references: [id])
+  course     Course?     @relation(fields: [courseId], references: [id])
+  deliveries Notification[]
+}
+
+model Notification {
+  id             String           @id @default(uuid())
+  userId         String
+  announcementId String?
+  kind           NotificationKind @default(SYSTEM)
+  title          String
+  message        String
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model SupportTicket {
+  id        String       @id @default(uuid())
+  userId    String
+  subject   String
+  message   String
+  status    TicketStatus @default(OPEN)
+  requestId String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+}
+
+/// Admin → System Settings (pricing defaults, branding, payment instructions…)
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
