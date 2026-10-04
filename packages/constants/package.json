@@ -1,0 +1,19 @@
+{
+  "name": "@freshman-plus/constants",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared enums & constants",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo"
+  }
+}
