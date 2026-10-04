@@ -1,0 +1,34 @@
+{
+  "name": "freshman-plus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Freshman+ \u2014 Ethiopian university learning platform (student mobile app, admin web portal, shared NestJS API)",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml,css}\"",
+    "db:generate": "turbo run db:generate",
+    "dev:api": "turbo run dev --filter=@freshman-plus/api",
+    "dev:admin": "turbo run dev --filter=@freshman-plus/admin-web",
+    "dev:mobile": "turbo run dev --filter=@freshman-plus/mobile",
+    "clean": "turbo run clean && rm -rf node_modules .turbo"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "~5.7.2"
+  }
+}
